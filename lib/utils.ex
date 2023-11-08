@@ -65,4 +65,17 @@ defmodule LangChain.Utils do
     end)
     |> Enum.join("; ")
   end
+
+  @doc """
+  Converts a string like "12s45ms" to milliseconds.
+  """
+  def response_time_string_to_ms(time_string) do
+    %{"ms" => ms, "s" => s, "m" => m} =
+      Regex.named_captures(~r/^((?<m>\d+)m)?((?<s>\d+)s)?((?<ms>\d+)ms)?$/, time_string)
+
+    to_int(m) * 60000 + to_int(s) * 1000 + to_int(ms || "0")
+  end
+
+  defp to_int(""), do: 0
+  defp to_int(value), do: String.to_integer(value)
 end

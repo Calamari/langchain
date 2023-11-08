@@ -92,4 +92,26 @@ defmodule LangChain.UtilsTest do
       assert result == "role: is important, is invalid; index: is numeric, is invalid"
     end
   end
+
+  describe "response_time_string_to_ms/1" do
+    test "handles simple milliseconds" do
+      assert Utils.response_time_string_to_ms("100ms") == 100
+    end
+
+    test "handles simple seconds" do
+      assert Utils.response_time_string_to_ms("12s") == 12000
+    end
+
+    test "handles seconds and milliseconds" do
+      assert Utils.response_time_string_to_ms("1s123ms") == 1123
+    end
+
+    test "handles minutes" do
+      assert Utils.response_time_string_to_ms("5m") == 300_000
+    end
+
+    test "handles minutes, seconds and milliseconds" do
+      assert Utils.response_time_string_to_ms("5m10s1ms") == 300_000 + 10000 + 1
+    end
+  end
 end

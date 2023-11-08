@@ -169,7 +169,7 @@ defmodule LangChain.ChatModels.ChatOpenAI do
       Logger.warning("Found override API response. Will not make live API call.")
 
       case get_api_override() do
-        {:ok, {:ok, data} = response} ->
+        {:ok, {:ok, data, meta_data} = response} ->
           # fire callback for fake responses too
           fire_callback(openai, data, callback_fn)
           response
@@ -185,8 +185,8 @@ defmodule LangChain.ChatModels.ChatOpenAI do
           {:error, reason} ->
             {:error, reason}
 
-          parsed_data ->
-            {:ok, parsed_data}
+          {parsed_data, meta_data} ->
+            {:ok, parsed_data, meta_data}
         end
       rescue
         err in LangChainError ->
@@ -204,7 +204,6 @@ defmodule LangChain.ChatModels.ChatOpenAI do
   #
   # If a callback_fn is provided, it will fire with each
 
-  # When `stream: true` is
   # If `stream: false`, the completed message is returned.
   #
   # If `stream: true`, the `callback_fn` is executed for the returned MessageDelta
@@ -229,14 +228,14 @@ defmodule LangChain.ChatModels.ChatOpenAI do
     |> Req.post()
     # parse the body and return it as parsed structs
     |> case do
-      {:ok, %Req.Response{body: data}} ->
+      {:ok, %Req.Response{body: data} = response} ->
         case do_process_response(data) do
           {:error, reason} ->
             {:error, reason}
 
           result ->
             fire_callback(openai, result, callback_fn)
-            result
+            {result, process_meta_data(response)}
         end
 
       {:error, %Mint.TransportError{reason: :timeout}} ->
@@ -317,8 +316,8 @@ defmodule LangChain.ChatModels.ChatOpenAI do
     |> maybe_add_org_id_header()
     |> Req.post()
     |> case do
-      {:ok, %Req.Response{body: data}} ->
-        data
+      {:ok, %Req.Response{body: data} = response} ->
+        {data, process_meta_data(response)}
 
       {:error, %LangChainError{message: reason}} ->
         {:error, reason}
@@ -549,5 +548,41 @@ defmodule LangChain.ChatModels.ChatOpenAI do
     else
       req
     end
+  end
+
+  defp process_meta_data(%Req.Response{headers: headers}) do
+    %LangChain.RequestMeta{
+      ratelimit_requests: %LangChain.RequestMeta.Limit{
+        limit: get_header(headers, "x-ratelimit-limit-requests") |> parse_header_int(),
+        remaining: get_header(headers, "x-ratelimit-remaining-requests") |> parse_header_int(),
+        time_to_reset: get_header(headers, "x-ratelimit-reset-requests") |> parse_reset_time()
+      },
+      ratelimit_tokens: %LangChain.RequestMeta.Limit{
+        limit: get_header(headers, "x-ratelimit-limit-tokens") |> parse_header_int(),
+        remaining: get_header(headers, "x-ratelimit-remaining-tokens") |> parse_header_int(),
+        time_to_reset: get_header(headers, "x-ratelimit-reset-tokens") |> parse_reset_time()
+      }
+    }
+  end
+
+  defp get_header(headers, key) do
+    case Map.get(headers, key) do
+      nil ->
+        nil
+
+      [value] ->
+        value
+    end
+  end
+
+  defp parse_header_int(nil), do: nil
+  defp parse_header_int(value), do: String.to_integer(value)
+
+  defp parse_reset_time(nil), do: nil
+
+  defp parse_reset_time(time_in_ms) do
+    time_in_ms
+    |> String.replace("ms", "")
+    |> String.to_integer()
   end
 end

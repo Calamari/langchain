@@ -53,6 +53,10 @@ defmodule LangChain.Chains.LLMChain do
     # avoid multiple chain instances (across processes) from both firing
     # callbacks.
     field :callback_fn, :any, virtual: true
+
+    # Contains the meta data from the last API request. Contains things like
+    # rate limits.
+    field :meta_data, :any, virtual: true
   end
 
   @type t :: %LLMChain{}
@@ -202,19 +206,19 @@ defmodule LangChain.Chains.LLMChain do
 
     # handle and output response
     case module.call(chain.llm, chain.messages, chain.functions, chain.callback_fn) do
-      {:ok, [%Message{} = message]} ->
+      {:ok, [%Message{} = message], meta_data} ->
         if chain.verbose, do: IO.inspect(message, label: "SINGLE MESSAGE RESPONSE")
-        {:ok, add_message(chain, message)}
+        {:ok, add_message(chain, message) |> update_meta_data(meta_data)}
 
-      {:ok, [%Message{} = message, _others] = messages} ->
+      {:ok, [%Message{} = message, _others] = messages, meta_data} ->
         if chain.verbose, do: IO.inspect(messages, label: "MULTIPLE MESSAGE RESPONSE")
         # return the list of message responses. Happens when multiple
         # "choices" are returned from LLM by request.
-        {:ok, add_message(chain, message)}
+        {:ok, add_message(chain, message) |> update_meta_data(meta_data)}
 
-      {:ok, [[%MessageDelta{} | _] | _] = deltas} ->
+      {:ok, [[%MessageDelta{} | _] | _] = deltas, meta_data} ->
         if chain.verbose, do: IO.inspect(deltas, label: "DELTA MESSAGE LIST RESPONSE")
-        {:ok, apply_deltas(chain, deltas)}
+        {:ok, apply_deltas(chain, deltas) |> update_meta_data(meta_data)}
 
       {:error, reason} ->
         if chain.verbose, do: IO.inspect(reason, label: "ERROR")
@@ -263,6 +267,13 @@ defmodule LangChain.Chains.LLMChain do
       ) do
     # can't merge a map with `nil`. Replace it.
     %LLMChain{chain | custom_context: context_update}
+  end
+
+  def update_meta_data(
+        %LLMChain{} = chain,
+        %LangChain.RequestMeta{} = meta_data
+      ) do
+    %LLMChain{chain | meta_data: meta_data}
   end
 
   @doc """

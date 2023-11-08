@@ -94,7 +94,8 @@ defmodule LangChain.Chains.LLMChainTest do
         [MessageDelta.new!(%{content: "Sock", status: :incomplete})]
       ]
 
-      set_api_override({:ok, fake_messages})
+      fake_meta = %LangChain.RequestMeta{}
+      set_api_override({:ok, fake_messages, fake_meta})
 
       # We can construct an LLMChain from a PromptTemplate and an LLM.
       {:ok, updated_chain, _response} =
@@ -186,7 +187,8 @@ defmodule LangChain.Chains.LLMChainTest do
 
       # Made NOT LIVE here
       fake_message = Message.new!(%{role: :assistant, content: "Socktastic!", status: :complete})
-      set_api_override({:ok, [fake_message]})
+      fake_meta = %LangChain.RequestMeta{}
+      set_api_override({:ok, [fake_message], fake_meta})
 
       # We can construct an LLMChain from a PromptTemplate and an LLM.
       {:ok, %LLMChain{} = updated_chain, message} =
@@ -199,6 +201,7 @@ defmodule LangChain.Chains.LLMChainTest do
       assert updated_chain.needs_response == false
       assert updated_chain.last_message == message
       assert updated_chain.last_message == fake_message
+      assert updated_chain.meta_data == fake_meta
     end
 
     test "non-live STREAM usage test" do
@@ -226,7 +229,8 @@ defmodule LangChain.Chains.LLMChainTest do
         [MessageDelta.new!(%{content: nil, status: :complete})]
       ]
 
-      set_api_override({:ok, fake_messages})
+      fake_meta = %LangChain.RequestMeta{}
+      set_api_override({:ok, fake_messages, fake_meta})
 
       # We can construct an LLMChain from a PromptTemplate and an LLM.
       {:ok, updated_chain, response} =
