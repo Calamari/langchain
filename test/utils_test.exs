@@ -102,6 +102,10 @@ defmodule LangChain.UtilsTest do
       assert Utils.response_time_string_to_ms("12s") == 12000
     end
 
+    test "handles seconds with subseconds" do
+      assert Utils.response_time_string_to_ms("2.61s") == 2610
+    end
+
     test "handles seconds and milliseconds" do
       assert Utils.response_time_string_to_ms("1s123ms") == 1123
     end

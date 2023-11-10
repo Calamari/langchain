@@ -229,6 +229,8 @@ defmodule LangChain.ChatModels.ChatOpenAI do
     # parse the body and return it as parsed structs
     |> case do
       {:ok, %Req.Response{body: data} = response} ->
+        IO.inspect(response, label: "RESPONSE")
+
         case do_process_response(data) do
           {:error, reason} ->
             {:error, reason}
@@ -581,8 +583,6 @@ defmodule LangChain.ChatModels.ChatOpenAI do
   defp parse_reset_time(nil), do: nil
 
   defp parse_reset_time(time_in_ms) do
-    time_in_ms
-    |> String.replace("ms", "")
-    |> String.to_integer()
+    Utils.response_time_string_to_ms(time_in_ms)
   end
 end

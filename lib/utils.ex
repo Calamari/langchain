@@ -71,11 +71,11 @@ defmodule LangChain.Utils do
   """
   def response_time_string_to_ms(time_string) do
     %{"ms" => ms, "s" => s, "m" => m} =
-      Regex.named_captures(~r/^((?<m>\d+)m)?((?<s>\d+)s)?((?<ms>\d+)ms)?$/, time_string)
+      Regex.named_captures(~r/^((?<m>\d+)m)?((?<s>\d*\.?\d+)s)?((?<ms>\d+)ms)?$/, time_string)
 
-    to_int(m) * 60000 + to_int(s) * 1000 + to_int(ms || "0")
+    round(to_num(m) * 60000 + to_num(s) * 1000 + to_num(ms || "0"))
   end
 
-  defp to_int(""), do: 0
-  defp to_int(value), do: String.to_integer(value)
+  defp to_num(""), do: 0
+  defp to_num(value), do: Float.parse(value) |> elem(0)
 end
