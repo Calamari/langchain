@@ -168,7 +168,7 @@ defmodule LangChain.Chains.LLMChain do
       # run the chain and format the return
       case do_run(chain) do
         {:ok, chain} ->
-          {:ok, chain, chain.last_message}
+          {:ok, chain, chain.last_message, chain.meta_data}
 
         {:error, _reason} = error ->
           error
