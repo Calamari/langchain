@@ -557,12 +557,14 @@ defmodule LangChain.ChatModels.ChatOpenAI do
       ratelimit_requests: %LangChain.RequestMeta.Limit{
         limit: get_header(headers, "x-ratelimit-limit-requests") |> parse_header_int(),
         remaining: get_header(headers, "x-ratelimit-remaining-requests") |> parse_header_int(),
-        time_to_reset: get_header(headers, "x-ratelimit-reset-requests") |> parse_reset_time()
+        time_to_reset:
+          get_header(headers, "x-ratelimit-reset-requests") |> parse_reset_time(headers)
       },
       ratelimit_tokens: %LangChain.RequestMeta.Limit{
         limit: get_header(headers, "x-ratelimit-limit-tokens") |> parse_header_int(),
         remaining: get_header(headers, "x-ratelimit-remaining-tokens") |> parse_header_int(),
-        time_to_reset: get_header(headers, "x-ratelimit-reset-tokens") |> parse_reset_time()
+        time_to_reset:
+          get_header(headers, "x-ratelimit-reset-tokens") |> parse_reset_time(headers)
       }
     }
   end
@@ -580,9 +582,13 @@ defmodule LangChain.ChatModels.ChatOpenAI do
   defp parse_header_int(nil), do: nil
   defp parse_header_int(value), do: String.to_integer(value)
 
-  defp parse_reset_time(nil), do: nil
+  defp parse_reset_time(nil, _), do: nil
 
-  defp parse_reset_time(time_in_ms) do
+  defp parse_reset_time(time_in_ms, headers) do
     Utils.response_time_string_to_ms(time_in_ms)
+  rescue
+    _err ->
+      Logger.error("Unable to parse reset time from header: #{inspect(headers)}")
+      nil
   end
 end
